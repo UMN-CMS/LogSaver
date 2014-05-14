@@ -27,6 +27,8 @@ from subprocess import call
 from tempfile import mkdtemp
 # Get the time
 from time import strftime
+# Allow removal of a directory structure
+from shutil import rmtree
 
 
 ## Helper functions
@@ -57,6 +59,10 @@ class Rsyncer:
         """ Run the rsync command. """
         com = ' '.join(self.command)
         call(com, shell=True)
+
+    def clean(self):
+        """ Remove self.tmp_directory """
+        rmtree(self.tmp_directory, ignore_errors=True)
 
 
 class Tarrer:
@@ -128,3 +134,4 @@ if __name__ == '__main__':
     # Pull the files and tar them
     rsyncer.run()
     tarrer.run()
+    rsyncer.clean()
