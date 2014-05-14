@@ -29,8 +29,8 @@ from tempfile import mkdtemp
 from time import strftime
 # Allow removal of a directory structure
 from shutil import rmtree
-# Make paths sane
-from os.path import normpath
+# Make paths sane, and allow splitting
+from os.path import normpath, split
 
 
 ## Helper functions
@@ -83,14 +83,20 @@ class Tarrer:
         current_time = strftime("%Y%m%d%H%M%S")
         file_name = normpath("power_mezzanine_tester_logs_" + current_time + ".tar.bz2")
         output_file = normpath(self.output_location + "/" + file_name)
-        input_files = normpath(self.directory_to_tar + "/*.txt")
+        (base_dir, log_dir) = split(self.directory_to_tar)
+        input_files = normpath(log_dir + "/*.txt")
 
-        # Build command
+        # Build the command
+        # I can't get "tar -C dir -cjf out.tar.bz2 stuff" to work, so we use cd
+        # explicitly
         self.command = [
+            "cd",
+            base_dir,
+            "&&",
             self.tar_exe,
             "-cjf",
             output_file,
-            input_files
+            input_files,
             ]
 
     def run(self):
