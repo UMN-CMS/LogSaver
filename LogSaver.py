@@ -73,14 +73,14 @@ class Tarrer:
         """ Build the tar command that will be called. """
         # Output file
         current_time = strftime("%Y%m%d%H%M%S")
-        file_name = "power_mezzanine_tester_logs_" + current_time + ".tar.gz"
+        file_name = "power_mezzanine_tester_logs_" + current_time + ".tar.bz2"
         output_file = self.output_location + "/" + file_name
         input_files = self.directory_to_tar + "/*.txt"
 
         # Build command
         self.command = [
             self.tar_exe,
-            "-czf",
+            "-cjf",
             output_file,
             input_files
             ]
