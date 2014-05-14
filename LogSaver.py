@@ -29,6 +29,8 @@ from tempfile import mkdtemp
 from time import strftime
 # Allow removal of a directory structure
 from shutil import rmtree
+# Make paths sane
+from os.path import normpath
 
 
 ## Helper functions
@@ -42,7 +44,7 @@ class Rsyncer:
         # Make the temp directory, build the command, and run it
         current_time = strftime("%Y%m%d%H%M%S")
         prefix = "power_mezzanine_tester_logs_" + current_time + "_"
-        self.tmp_directory = mkdtemp(prefix=prefix) + '/'
+        self.tmp_directory = normpath(mkdtemp(prefix=prefix) + '/')
         self.__build_command()
 
     def __build_command(self):
@@ -79,9 +81,9 @@ class Tarrer:
         """ Build the tar command that will be called. """
         # Output file
         current_time = strftime("%Y%m%d%H%M%S")
-        file_name = "power_mezzanine_tester_logs_" + current_time + ".tar.bz2"
-        output_file = self.output_location + "/" + file_name
-        input_files = self.directory_to_tar + "/*.txt"
+        file_name = normpath("power_mezzanine_tester_logs_" + current_time + ".tar.bz2")
+        output_file = normpath(self.output_location + "/" + file_name)
+        input_files = normpath(self.directory_to_tar + "/*.txt")
 
         # Build command
         self.command = [
