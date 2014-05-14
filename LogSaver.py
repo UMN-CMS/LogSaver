@@ -75,7 +75,7 @@ class Tarrer:
         current_time = strftime("%Y%m%d%H%M%S")
         file_name = "power_mezzanine_tester_logs_" + current_time + ".tar.gz"
         output_file = self.output_location + "/" + file_name
-        input_files = self.directory_to_tar + "/*"
+        input_files = self.directory_to_tar + "/*.txt"
 
         # Build command
         self.command = [
