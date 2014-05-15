@@ -69,10 +69,11 @@ class Rsyncer:
 
 class Tarrer:
     """ A class to handle tarring the log directory. """
-    def __init__(self, tar_exe, directory_to_tar, output_location):
+    def __init__(self, tar_exe, directory_to_tar, output_location, is_daily):
         self.tar_exe = tar_exe
         self.directory_to_tar = directory_to_tar
         self.output_location = output_location
+        self.is_daily = is_daily
 
         # Build the command to run
         self.__build_command()
@@ -82,6 +83,9 @@ class Tarrer:
         # Output file
         current_time = strftime("%Y%m%d%H%M%S")
         file_name = normpath("power_mezzanine_tester_logs_" + current_time + ".tar.bz2")
+        # Mark daily logs with "DAILY_" so we can exclude them from being removed
+        if (self.is_daily):
+            file_name = "DAILY_" + file_name
         output_file = normpath(self.output_location + "/" + file_name)
         (base_dir, log_dir) = split(self.directory_to_tar)
         input_files = normpath(log_dir + "/*.txt")
@@ -133,12 +137,17 @@ if __name__ == '__main__':
         type=str,
         help="local directory to backup logs to"
     )
+    arg_parser.add_argument(
+        "--daily",
+        action="store_true",
+        help="mark the backup as the 'daily' backup, which is kept forever"
+    )
 
     args = arg_parser.parse_args()
 
     # Set up our objects
     rsyncer = Rsyncer(rsync_exe, args.log_location)
-    tarrer = Tarrer(tar_exe, rsyncer.tmp_directory, args.output_dir)
+    tarrer = Tarrer(tar_exe, rsyncer.tmp_directory, args.output_dir, is_daily=args.daily)
     # Pull the files and tar them
     rsyncer.run()
     tarrer.run()
