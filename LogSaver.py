@@ -26,7 +26,7 @@ from subprocess import call
 # Secure methods of generating random directories
 from tempfile import mkdtemp
 # Get the time
-from time import strftime
+from datetime import datetime, timedelta
 # Allow removal of a directory structure
 from shutil import rmtree
 # Make paths sane, and allow splitting
@@ -42,7 +42,8 @@ class Rsyncer:
         self.remote_location = remote_location
 
         # Make the temp directory, build the command, and run it
-        current_time = strftime("%Y%m%d%H%M%S")
+        now = datetime.now()
+        current_time = now.strftime("%Y%m%d%H%M%S")
         prefix = "power_mezzanine_tester_logs_" + current_time + "_"
         self.tmp_directory = normpath(mkdtemp(prefix=prefix) + '/')
         self.__build_command()
@@ -69,22 +70,32 @@ class Rsyncer:
 
 class Tarrer:
     """ A class to handle tarring the log directory. """
-    def __init__(self, tar_exe, directory_to_tar, output_location, is_daily):
+    def __init__(self, tar_exe, directory_to_tar, output_location, is_daily, do_full_backup=False):
         self.tar_exe = tar_exe
         self.directory_to_tar = directory_to_tar
         self.output_location = output_location
         self.is_daily = is_daily
+        self.do_full_backup = do_full_backup
 
         # Build the command to run
         self.__build_command()
 
     def __build_command(self):
         """ Build the tar command that will be called. """
+        # Set up the times
+        now = datetime.now()
+        current_time = now.strftime("%Y%m%d%H%M%S")
+        delta = timedelta(days=2)
+        two_days_ago = now - delta
+        cutoff_date = two_days_ago.strftime("%Y-%m-%d %H:%M:%S")
         # Output file
-        current_time = strftime("%Y%m%d%H%M%S")
         file_name = normpath("power_mezzanine_tester_logs_" + current_time + ".tar.bz2")
-        # Mark daily logs with "DAILY_" so we can exclude them from being removed
-        if (self.is_daily):
+        # Mark full backups with "FULL_", Mark daily logs with "DAILY_". We do
+        # this so that we can exclude from being removed when the backups are
+        # cleaned up
+        if self.do_full_backup:
+            file_name = "FULL_" + file_name
+        elif (self.is_daily):
             file_name = "DAILY_" + file_name
         output_file = normpath(self.output_location + "/" + file_name)
         (base_dir, log_dir) = split(self.directory_to_tar)
@@ -98,10 +109,20 @@ class Tarrer:
             base_dir,
             "&&",
             self.tar_exe,
-            "-cjf",
-            output_file,
-            input_files,
             ]
+
+        # If not doing a "full" backup, only grab the files from the last two days
+        if not self.do_full_backup:
+            self.command.append('--newer-mtime="%s"' % cutoff_date)
+
+        # Now add the rest of the command
+        self.command.extend(
+                [
+                    "-cjf",
+                    output_file,
+                    input_files,
+                    ]
+                )
 
     def run(self):
         """ Run the rsync command. """
@@ -124,7 +145,8 @@ if __name__ == '__main__':
 
     # Command line argument parser
     arg_parser = ArgumentParser(
-        description="Backup log files from a remote server."
+        description="Backup log files that have changed in the last two days\
+                from a remote server."
     )
     # Arguments
     arg_parser.add_argument(
@@ -142,12 +164,24 @@ if __name__ == '__main__':
         action="store_true",
         help="mark the backup as the 'daily' backup, which is kept forever"
     )
+    arg_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="run a full backup, making a copy of every log file, not just\
+                ones newer than two days old."
+    )
 
     args = arg_parser.parse_args()
 
     # Set up our objects
     rsyncer = Rsyncer(rsync_exe, args.log_location)
-    tarrer = Tarrer(tar_exe, rsyncer.tmp_directory, args.output_dir, is_daily=args.daily)
+    tarrer = Tarrer(
+            tar_exe,
+            rsyncer.tmp_directory,
+            args.output_dir,
+            is_daily=args.daily,
+            do_full_backup=args.full
+            )
     # Pull the files and tar them
     rsyncer.run()
     tarrer.run()
